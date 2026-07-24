@@ -5,6 +5,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS mantenimientos;
 DROP TABLE IF EXISTS motocicletas;
 DROP TABLE IF EXISTS usuarios;
+DROP TABLE IF EXISTS schema_migrations;
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE usuarios (
@@ -27,6 +28,7 @@ CREATE TABLE motocicletas (
     numero_motor VARCHAR(100) NULL UNIQUE,
     numero_chasis VARCHAR(100) NULL UNIQUE,
     unidad_asignada VARCHAR(150) NOT NULL,
+    foto VARCHAR(255) NULL,
     fecha_ingreso DATE NULL,
     kilometraje_actual INT UNSIGNED NOT NULL DEFAULT 0,
     tipo_mantenimiento ENUM('Por kilometraje','Por tiempo','Mixto') NOT NULL DEFAULT 'Mixto',
@@ -59,14 +61,19 @@ CREATE TABLE mantenimientos (
     INDEX idx_mantenimiento_proximo (proxima_fecha, proximo_km)
 ) ENGINE=InnoDB;
 
+CREATE TABLE schema_migrations (
+    migration VARCHAR(190) PRIMARY KEY,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 INSERT INTO usuarios (nombre, correo, clave, rol) VALUES
 ('Administrador LINCE', 'admin@lince.local', '$2y$12$oo9KfzB8mg0OSDgLvAhYyOCMGNVHJ812.puxTIOxynRjJqbzg9gdO', 'Administrador');
 
 INSERT INTO motocicletas
-(codigo_qr, marca, modelo, anio, placa, numero_motor, numero_chasis, unidad_asignada, fecha_ingreso, kilometraje_actual, tipo_mantenimiento, estado, observaciones)
+(codigo_qr, marca, modelo, anio, placa, numero_motor, numero_chasis, unidad_asignada, foto, fecha_ingreso, kilometraje_actual, tipo_mantenimiento, estado, observaciones)
 VALUES
-('LINCE-M-001', 'Suzuki', 'DR 150', 2025, 'PN-1001', 'MOT-1001', 'CHA-1001', 'LINCE San Miguelito', '2025-01-15', 6800, 'Por kilometraje', 'Operativa', 'Motocicleta de demostración'),
-('LINCE-M-002', 'Suzuki', 'DR 200', 2020, 'PN-1002', 'MOT-1002', 'CHA-1002', 'LINCE San Miguelito', '2020-06-10', 15200, 'Mixto', 'En mantenimiento', 'Pendiente de revisión general');
+('LINCE-M-001', 'Suzuki', 'DR 150', 2025, 'PN-1001', 'MOT-1001', 'CHA-1001', 'LINCE San Miguelito', NULL, '2025-01-15', 6800, 'Por kilometraje', 'Operativa', 'Motocicleta de demostración'),
+('LINCE-M-002', 'Suzuki', 'DR 200', 2020, 'PN-1002', 'MOT-1002', 'CHA-1002', 'LINCE San Miguelito', NULL, '2020-06-10', 15200, 'Mixto', 'En mantenimiento', 'Pendiente de revisión general');
 
 INSERT INTO mantenimientos
 (moto_id, fecha, kilometraje, tipo, diagnostico, trabajos_realizados, repuestos_utilizados, responsable, proximo_km, proxima_fecha, estado, creado_por)
