@@ -30,9 +30,9 @@ final class Moto
     public function create(array $data): int
     {
         $sql = 'INSERT INTO motocicletas
-            (codigo_qr, marca, modelo, anio, placa, numero_motor, numero_chasis, unidad_asignada, fecha_ingreso, kilometraje_actual, tipo_mantenimiento, estado, observaciones)
+            (codigo_qr, marca, modelo, anio, placa, numero_motor, numero_chasis, unidad_asignada, foto, fecha_ingreso, kilometraje_actual, tipo_mantenimiento, estado, observaciones)
             VALUES
-            (:codigo_qr, :marca, :modelo, :anio, :placa, :numero_motor, :numero_chasis, :unidad_asignada, :fecha_ingreso, :kilometraje_actual, :tipo_mantenimiento, :estado, :observaciones)';
+            (:codigo_qr, :marca, :modelo, :anio, :placa, :numero_motor, :numero_chasis, :unidad_asignada, :foto, :fecha_ingreso, :kilometraje_actual, :tipo_mantenimiento, :estado, :observaciones)';
         $stmt = Database::connection()->prepare($sql);
         $stmt->execute($data);
         return (int)Database::connection()->lastInsertId();
@@ -50,6 +50,7 @@ final class Moto
             numero_motor = :numero_motor,
             numero_chasis = :numero_chasis,
             unidad_asignada = :unidad_asignada,
+            foto = :foto,
             fecha_ingreso = :fecha_ingreso,
             kilometraje_actual = :kilometraje_actual,
             tipo_mantenimiento = :tipo_mantenimiento,
