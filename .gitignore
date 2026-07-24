@@ -1,0 +1,5 @@
+/app/config/config.local.php
+/.installed
+*.log
+.DS_Store
+Thumbs.db
