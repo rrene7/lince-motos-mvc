@@ -1,5 +1,6 @@
 /app/config/config.local.php
 /.installed
+/public/assets/js/qrcode.min.js
 *.log
 .DS_Store
 Thumbs.db
