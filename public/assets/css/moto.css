@@ -1,0 +1,80 @@
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.text-danger { color: #a42732 !important; }
+.is-hidden { display: none !important; }
+
+.section-title { border-top: 1px solid #e4e9ef; padding-top: 14px; margin-top: 2px; }
+.section-title:first-of-type { border-top: 0; }
+.section-title h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.section-title p { margin: 0; color: #6b7788; font-size: .86rem; }
+
+.photo-field {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 22px;
+    align-items: center;
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px dashed #b9c7d6;
+    border-radius: 12px;
+}
+.photo-preview-wrap { width: 220px; height: 150px; border-radius: 10px; overflow: hidden; background: #e9eef4; }
+.photo-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-placeholder { width: 100%; height: 100%; display: grid; place-items: center; align-content: center; gap: 5px; color: #617086; }
+.photo-placeholder span { font-size: 2.2rem; }
+.photo-controls small { display: block; margin-top: 8px; color: #6b7788; font-weight: 400; }
+.check-label { display: flex !important; align-items: center; gap: 8px; margin-top: 13px; font-weight: 600 !important; }
+.check-label input { width: auto; margin: 0; }
+
+.identity-grid { display: grid; grid-template-columns: 1fr 1.7fr 1fr; gap: 18px; }
+.identity-grid .panel { min-width: 0; }
+.technical-card dl { display: grid; grid-template-columns: 145px 1fr; gap: 12px; }
+.technical-card dt { font-weight: 700; color: #59687a; }
+.technical-card dd { margin: 0; }
+
+.moto-photo-card { padding: 0; overflow: hidden; min-height: 300px; }
+.moto-photo { width: 100%; height: 100%; min-height: 300px; object-fit: cover; display: block; }
+.moto-photo-empty { min-height: 300px; display: grid; place-items: center; align-content: center; gap: 7px; color: #64748b; background: linear-gradient(145deg, #eef3f7, #f9fbfc); }
+.moto-photo-empty span { font-size: 3.2rem; }
+.moto-photo-empty small { color: #7b8798; }
+
+.moto-thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 7px; display: block; }
+.moto-thumb-empty { width: 64px; height: 48px; display: grid; place-items: center; border-radius: 7px; background: #edf2f6; font-size: 1.5rem; }
+
+.qr-card { text-align: center; }
+.qr-output { width: 210px; min-height: 210px; margin: 12px auto; padding: 10px; border: 1px solid #c7d0da; background: white; display: grid; place-items: center; }
+.qr-output img, .qr-output canvas { max-width: 100%; height: auto; }
+.qr-status { margin: 8px 0; color: #536477; font-size: .88rem; }
+.qr-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.qr-warning { display: block; background: #fff6d8; color: #6c5100; padding: 10px; border-radius: 8px; line-height: 1.35; }
+.record-note { margin-top: 18px; padding: 13px; border-radius: 8px; background: #f6f8fa; }
+.record-note p { margin: 6px 0 0; line-height: 1.5; }
+
+@media (max-width: 1050px) {
+    .identity-grid { grid-template-columns: 1fr 1.5fr; }
+    .qr-card { grid-column: 1 / -1; }
+}
+
+@media (max-width: 900px) {
+    .identity-grid { grid-template-columns: 1fr; }
+    .qr-card { grid-column: auto; }
+    .photo-field { grid-template-columns: 1fr; }
+    .photo-preview-wrap { width: 100%; max-width: 420px; height: 230px; }
+}
+
+@media (max-width: 520px) {
+    .form-actions { position: sticky; bottom: 0; padding: 12px 0 0; background: white; }
+    .form-actions .btn { flex: 1; text-align: center; }
+    .technical-card dl { grid-template-columns: 1fr; gap: 5px; }
+    .technical-card dd { margin-bottom: 9px; }
+}
+
+@media print {
+    :root, body { background: white; }
+    .topbar, .nav, .footer, .no-print, .alert { display: none !important; }
+    .container { max-width: none; margin: 0; padding: 0; }
+    .panel { box-shadow: none; break-inside: avoid; }
+    .identity-grid { grid-template-columns: 1fr 1.5fr 1fr; }
+    .moto-photo-card, .moto-photo, .moto-photo-empty { min-height: 220px; }
+    .qr-card { grid-column: auto; }
+    a { color: inherit; text-decoration: none; }
+}
