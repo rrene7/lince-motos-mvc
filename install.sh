@@ -26,7 +26,7 @@ Opciones:
   --db-user USUARIO   Usuario MySQL. Predeterminado: root
   --db-pass CLAVE     Contraseña MySQL. Predeterminado: vacía
   --reset-db           Elimina y vuelve a crear las tablas del prototipo.
-  --skip-db            Instala archivos sin importar la base de datos.
+  --skip-db            Instala archivos sin importar ni actualizar la base de datos.
   -h, --help           Muestra esta ayuda.
 
 Ejemplos:
@@ -44,6 +44,10 @@ fail() {
 
 info() {
   printf '==> %s\n' "$1"
+}
+
+warn() {
+  printf 'AVISO: %s\n' "$1" >&2
 }
 
 while [[ $# -gt 0 ]]; do
@@ -85,14 +89,16 @@ if [[ "$SOURCE_REAL" != "$TARGET_REAL" ]]; then
   info "Copiando el proyecto a $TARGET_DIR"
   mkdir -p "$TARGET_DIR"
   if command -v rsync >/dev/null 2>&1; then
-    rsync -a --delete --exclude='.git/' --exclude='app/config/config.local.php' "$SCRIPT_DIR/" "$TARGET_DIR/"
+    rsync -a --delete --exclude='.git/' --exclude='app/config/config.local.php' --exclude='public/assets/js/qrcode.min.js' --exclude='public/uploads/motos/*.jpg' --exclude='public/uploads/motos/*.png' --exclude='public/uploads/motos/*.webp' "$SCRIPT_DIR/" "$TARGET_DIR/"
   else
-    find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-    (cd "$SCRIPT_DIR" && tar --exclude='./.git' --exclude='./app/config/config.local.php' -cf - .) | (cd "$TARGET_DIR" && tar -xf -)
+    find "$TARGET_DIR" -mindepth 1 -maxdepth 1 ! -name public -exec rm -rf {} +
+    (cd "$SCRIPT_DIR" && tar --exclude='./.git' --exclude='./app/config/config.local.php' --exclude='./public/assets/js/qrcode.min.js' --exclude='./public/uploads/motos/*.jpg' --exclude='./public/uploads/motos/*.png' --exclude='./public/uploads/motos/*.webp' -cf - .) | (cd "$TARGET_DIR" && tar -xf -)
   fi
 else
   info "El proyecto ya está ubicado en $TARGET_DIR"
 fi
+
+mkdir -p "$TARGET_DIR/public/uploads/motos" "$TARGET_DIR/public/assets/js"
 
 CONFIG_FILE="$TARGET_DIR/app/config/config.local.php"
 php_export() {
@@ -116,6 +122,26 @@ return [
 PHP
 
 info "Configuración local creada en app/config/config.local.php"
+
+QR_LIBRARY="$TARGET_DIR/public/assets/js/qrcode.min.js"
+QR_LIBRARY_URL="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
+if [[ ! -s "$QR_LIBRARY" ]]; then
+  info "Instalando generador local de códigos QR"
+  QR_TEMP="$QR_LIBRARY.tmp"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$QR_LIBRARY_URL" -o "$QR_TEMP" && mv "$QR_TEMP" "$QR_LIBRARY" || rm -f "$QR_TEMP"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$QR_TEMP" "$QR_LIBRARY_URL" && mv "$QR_TEMP" "$QR_LIBRARY" || rm -f "$QR_TEMP"
+  else
+    warn "No se encontró curl ni wget. El sistema intentará cargar el generador QR desde Internet al abrir el expediente."
+  fi
+fi
+
+if [[ -s "$QR_LIBRARY" ]]; then
+  info "Generador QR disponible localmente"
+else
+  warn "No se pudo descargar qrcode.min.js. Puede ejecutar nuevamente el instalador cuando tenga conexión."
+fi
 
 find_binary() {
   local name="$1"
@@ -163,7 +189,7 @@ if [[ "$SKIP_DB" -eq 0 ]]; then
   TABLE_COUNT="$("$MYSQL_BIN" "${MYSQL_ARGS[@]}" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME';")"
 
   if [[ "$TABLE_COUNT" -gt 0 && "$RESET_DB" -eq 0 ]]; then
-    info "La base $DB_NAME ya contiene tablas; se conservaron los datos. Usa --reset-db para reiniciarla."
+    info "La base $DB_NAME ya contiene tablas; se conservaron los datos."
   else
     info "Creando e importando la base de datos $DB_NAME"
     "$MYSQL_BIN" "${MYSQL_ARGS[@]}" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
@@ -181,9 +207,23 @@ if [[ "$SKIP_DB" -eq 0 ]]; then
     info "Base de datos importada correctamente"
   fi
 
+  "$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS schema_migrations (migration VARCHAR(190) PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;"
+
+  if compgen -G "$TARGET_DIR/database/migrations/*.sql" >/dev/null; then
+    for migration_file in "$TARGET_DIR"/database/migrations/*.sql; do
+      migration_name="$(basename "$migration_file")"
+      applied="$("$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "SELECT COUNT(*) FROM schema_migrations WHERE migration = '$migration_name';")"
+      if [[ "$applied" -eq 0 ]]; then
+        info "Aplicando actualización de base: $migration_name"
+        "$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$DB_NAME" < "$migration_file"
+        "$MYSQL_BIN" "${MYSQL_ARGS[@]}" "$DB_NAME" -e "INSERT INTO schema_migrations (migration) VALUES ('$migration_name');"
+      fi
+    done
+  fi
+
   unset MYSQL_PWD
 else
-  info "Importación de MySQL omitida por --skip-db"
+  info "Importación y actualización de MySQL omitidas por --skip-db"
 fi
 
 printf '%s\n' "Instalado: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" > "$TARGET_DIR/.installed"
