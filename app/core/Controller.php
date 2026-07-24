@@ -20,6 +20,14 @@ abstract class Controller
     protected function requireAuth(): void
     {
         if (!Auth::check()) {
+            $route = trim((string)($_GET['url'] ?? ''), '/');
+            $query = $_GET;
+            unset($query['url']);
+
+            if ($route !== '' && $route !== 'login') {
+                $_SESSION['_intended_route'] = $route . ($query ? '?' . http_build_query($query) : '');
+            }
+
             flash('error', 'Debe iniciar sesión para continuar.');
             redirect('login');
         }
