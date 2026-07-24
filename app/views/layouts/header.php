@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?></title>
     <link rel="stylesheet" href="<?= e(base_url('public/assets/css/style.css')) ?>">
+    <link rel="stylesheet" href="<?= e(base_url('public/assets/css/moto.css')) ?>">
 </head>
 <body>
 <?php if (Auth::check()): ?>
