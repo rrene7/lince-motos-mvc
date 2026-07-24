@@ -6,7 +6,9 @@ final class AuthController extends Controller
     public function showLogin(): void
     {
         if (Auth::check()) {
-            redirect('dashboard');
+            $route = (string)($_SESSION['_intended_route'] ?? 'dashboard');
+            unset($_SESSION['_intended_route']);
+            redirect($route);
         }
         $this->view('auth/login', ['title' => 'Iniciar sesión']);
     }
@@ -27,12 +29,16 @@ final class AuthController extends Controller
         Auth::login($user);
         clear_old();
         flash('success', 'Bienvenido al sistema.');
-        redirect('dashboard');
+
+        $route = (string)($_SESSION['_intended_route'] ?? 'dashboard');
+        unset($_SESSION['_intended_route']);
+        redirect($route);
     }
 
     public function logout(): void
     {
         Auth::logout();
+        unset($_SESSION['_intended_route']);
         redirect('login');
     }
 }
