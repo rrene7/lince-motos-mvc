@@ -27,6 +27,26 @@ final class Moto
         return $moto ?: null;
     }
 
+    public function existsByField(string $field, string $value, ?int $excludeId = null): bool
+    {
+        $allowedFields = ['codigo_qr', 'placa', 'numero_motor', 'numero_chasis'];
+        if (!in_array($field, $allowedFields, true)) {
+            throw new InvalidArgumentException('Campo de búsqueda no permitido.');
+        }
+
+        $sql = "SELECT COUNT(*) FROM motocicletas WHERE {$field} = :value";
+        $params = ['value' => $value];
+
+        if ($excludeId !== null && $excludeId > 0) {
+            $sql .= ' AND id <> :exclude_id';
+            $params['exclude_id'] = $excludeId;
+        }
+
+        $stmt = Database::connection()->prepare($sql);
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
     public function create(array $data): int
     {
         $sql = 'INSERT INTO motocicletas
