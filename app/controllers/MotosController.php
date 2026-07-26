@@ -35,12 +35,19 @@ final class MotosController extends Controller
         $this->requireAuth();
         Csrf::validate();
 
-        $photo = $this->preparePhoto(null);
         $data = $this->validatedData();
+        $this->validateUniqueData($data);
+        $photo = $this->preparePhoto(null);
         $data['foto'] = $photo['path'];
 
         try {
             $id = $this->model->create($data);
+        } catch (PDOException $exception) {
+            $this->deleteStoredPhoto($photo['new_path']);
+            if ((string)$exception->getCode() === '23000') {
+                $this->formError('No se pudo registrar la motocicleta porque uno de sus datos únicos ya está registrado. Revise el código QR, la placa, el motor y el chasis.');
+            }
+            throw $exception;
         } catch (Throwable $exception) {
             $this->deleteStoredPhoto($photo['new_path']);
             throw $exception;
@@ -101,12 +108,19 @@ final class MotosController extends Controller
             redirect('motos');
         }
 
-        $photo = $this->preparePhoto($moto['foto'] ?? null);
         $data = $this->validatedData();
+        $this->validateUniqueData($data, $id);
+        $photo = $this->preparePhoto($moto['foto'] ?? null);
         $data['foto'] = $photo['path'];
 
         try {
             $this->model->update($id, $data);
+        } catch (PDOException $exception) {
+            $this->deleteStoredPhoto($photo['new_path']);
+            if ((string)$exception->getCode() === '23000') {
+                $this->formError('No se pudieron guardar los cambios porque uno de los datos únicos ya pertenece a otra motocicleta. Revise el código QR, la placa, el motor y el chasis.');
+            }
+            throw $exception;
         } catch (Throwable $exception) {
             $this->deleteStoredPhoto($photo['new_path']);
             throw $exception;
@@ -137,20 +151,18 @@ final class MotosController extends Controller
         $required = ['codigo_qr', 'marca', 'modelo', 'placa', 'unidad_asignada', 'estado'];
         foreach ($required as $field) {
             if (trim((string)($_POST[$field] ?? '')) === '') {
-                $_SESSION['_old'] = $_POST;
-                flash('error', 'Complete todos los campos obligatorios.');
-                redirect($this->formRoute());
+                $this->formError('Complete todos los campos obligatorios.');
             }
         }
 
         return [
-            'codigo_qr' => trim((string)$_POST['codigo_qr']),
+            'codigo_qr' => strtoupper(trim((string)$_POST['codigo_qr'])),
             'marca' => trim((string)$_POST['marca']),
             'modelo' => trim((string)$_POST['modelo']),
             'anio' => ($_POST['anio'] ?? '') !== '' ? (int)$_POST['anio'] : null,
-            'placa' => trim((string)$_POST['placa']),
-            'numero_motor' => trim((string)($_POST['numero_motor'] ?? '')) ?: null,
-            'numero_chasis' => trim((string)($_POST['numero_chasis'] ?? '')) ?: null,
+            'placa' => strtoupper(trim((string)$_POST['placa'])),
+            'numero_motor' => $this->normalizedOptionalCode($_POST['numero_motor'] ?? null),
+            'numero_chasis' => $this->normalizedOptionalCode($_POST['numero_chasis'] ?? null),
             'unidad_asignada' => trim((string)$_POST['unidad_asignada']),
             'fecha_ingreso' => ($_POST['fecha_ingreso'] ?? '') ?: null,
             'kilometraje_actual' => max(0, (int)($_POST['kilometraje_actual'] ?? 0)),
@@ -158,6 +170,28 @@ final class MotosController extends Controller
             'estado' => (string)$_POST['estado'],
             'observaciones' => trim((string)($_POST['observaciones'] ?? '')) ?: null,
         ];
+    }
+
+    private function validateUniqueData(array $data, ?int $excludeId = null): void
+    {
+        $checks = [
+            ['field' => 'codigo_qr', 'label' => 'código QR', 'value' => $data['codigo_qr']],
+            ['field' => 'placa', 'label' => 'placa', 'value' => $data['placa']],
+            ['field' => 'numero_motor', 'label' => 'número de motor', 'value' => $data['numero_motor']],
+            ['field' => 'numero_chasis', 'label' => 'número de chasis', 'value' => $data['numero_chasis']],
+        ];
+
+        foreach ($checks as $check) {
+            if ($check['value'] !== null && $check['value'] !== '' && $this->model->existsByField($check['field'], $check['value'], $excludeId)) {
+                $this->formError('Ya existe una motocicleta registrada con el ' . $check['label'] . ' “' . $check['value'] . '”. Use un dato diferente o abra el expediente existente.');
+            }
+        }
+    }
+
+    private function normalizedOptionalCode(mixed $value): ?string
+    {
+        $normalized = strtoupper(trim((string)$value));
+        return $normalized !== '' ? $normalized : null;
     }
 
     private function preparePhoto(?string $currentPhoto): array
@@ -175,16 +209,16 @@ final class MotosController extends Controller
         }
 
         if ($uploadError !== UPLOAD_ERR_OK) {
-            $this->photoError('No fue posible cargar la fotografía. Intente nuevamente.');
+            $this->formError('No fue posible cargar la fotografía. Intente nuevamente.');
         }
 
         $temporaryName = (string)($file['tmp_name'] ?? '');
         $size = (int)($file['size'] ?? 0);
         if ($temporaryName === '' || !is_uploaded_file($temporaryName)) {
-            $this->photoError('La fotografía recibida no es válida.');
+            $this->formError('La fotografía recibida no es válida.');
         }
         if ($size <= 0 || $size > self::MAX_PHOTO_SIZE) {
-            $this->photoError('La fotografía debe pesar menos de 5 MB.');
+            $this->formError('La fotografía debe pesar menos de 5 MB.');
         }
 
         $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -195,12 +229,12 @@ final class MotosController extends Controller
             'image/webp' => 'webp',
         ];
         if (!isset($extensions[$mime])) {
-            $this->photoError('Use una fotografía JPG, PNG o WEBP.');
+            $this->formError('Use una fotografía JPG, PNG o WEBP.');
         }
 
         $uploadDirectory = ROOT_PATH . '/' . self::PHOTO_DIRECTORY;
         if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0775, true) && !is_dir($uploadDirectory)) {
-            $this->photoError('No se pudo preparar el directorio de fotografías.');
+            $this->formError('No se pudo preparar el directorio de fotografías.');
         }
 
         $filename = bin2hex(random_bytes(16)) . '.' . $extensions[$mime];
@@ -208,7 +242,7 @@ final class MotosController extends Controller
         $destination = ROOT_PATH . '/' . $relativePath;
 
         if (!move_uploaded_file($temporaryName, $destination)) {
-            $this->photoError('No se pudo guardar la fotografía en el servidor.');
+            $this->formError('No se pudo guardar la fotografía en el servidor.');
         }
 
         return [
@@ -218,7 +252,7 @@ final class MotosController extends Controller
         ];
     }
 
-    private function photoError(string $message): never
+    private function formError(string $message): never
     {
         $_SESSION['_old'] = $_POST;
         flash('error', $message);
